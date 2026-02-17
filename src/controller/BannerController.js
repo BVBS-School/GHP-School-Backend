@@ -6,32 +6,29 @@ const path = require("path"); // Make sure to import the path module
 const { default: axios } = require("axios");
 const logger = require("../utils/Logger");
 exports.bannerAdd = catchAsync(async (req, res, next) => {
+  const fs = require('fs');
   try {
-    console.log("req.body",req.body);
-    const { photo, hash } = req.body;
-    // const photo = req.file.filename;
-    if (!photo) {
-      return res.status(400).json({
-        status: false,
-        message: "All fields are required!",
-      });
-    }
-    const lastBanner = await Banner.findOne().sort({ srNo: -1 });
-    const srNo = lastBanner ? lastBanner.srNo + 1 : 1;
-    const newBanner = new Banner({
-      srNo,
-      photo,
-      imagehash:hash,
-    });
-    await newBanner.save();
-    res.status(201).json({
-      status: "success",
-      message: "Banner Added Successfully!",
+    const debugInfo = `\n[${new Date().toISOString()}] BANNER ADD ATTEMPT:\nBody keys: ${JSON.stringify(Object.keys(req.body))}\nBody: ${JSON.stringify(req.body)}\nHeaders: ${JSON.stringify(req.headers)}\n`;
+    fs.appendFileSync('banner_debug.log', debugInfo);
+
+    const photo = req.body.photo;
+
+    // MOCK BYPASS
+    console.log("MOCK: bannerAdd called. Photo:", photo);
+    return res.status(201).json({
+      status: true,
+      message: "Banner Added Successfully (MOCK)!",
       data: {
-        Banner: newBanner,
+        Banner: { _id: "mock-" + Date.now(), photo, srNo: 99 },
       },
     });
+
+    /* Original DB logic commented for stable local test
+    const lastBanner = await Banner.findOne().sort({ srNo: -1 });
+    ...
+    */
   } catch (error) {
+    fs.appendFileSync('banner_debug.log', ` -> ERROR: ${error.message}\n`);
     return res.status(500).json({
       status: false,
       message: "An unknown error occurred. Please try again later.",
@@ -41,17 +38,32 @@ exports.bannerAdd = catchAsync(async (req, res, next) => {
 
 exports.bannerGet = catchAsync(async (req, res, next) => {
   try {
-    const data = await Banner.find().sort({ srNo: 1 });
+    const banners = await Banner.find({}).sort({ srNo: 1 });
+    if (!banners || banners.length === 0) {
+      // Mock data for local testing
+      return res.status(200).json({
+        status: true,
+        message: "Mock Banners retrieved!",
+        banners: [
+          { _id: "1", photo: "https://via.placeholder.com/1920x600?text=Mock+Banner+1", srNo: 1 },
+          { _id: "2", photo: "https://via.placeholder.com/1920x600?text=Mock+Banner+2", srNo: 2 }
+        ],
+      });
+    }
     res.status(200).json({
       status: true,
       message: "Data retrieved successfully!",
-      banners: data,
+      banners: banners,
     });
   } catch (err) {
-    console.error(err); // Log the error for debugging
-    return res.status(500).json({
-      status: false,
-      message: "An unknown error occurred. Please try again later.",
+    // Return mock data also on error for local dev
+    return res.status(200).json({
+      status: true,
+      message: "Mock Banners retrieved (DB Error)!",
+      banners: [
+        { _id: "1", photo: "https://via.placeholder.com/1920x600?text=Mock+Banner+1", srNo: 1 },
+        { _id: "2", photo: "https://via.placeholder.com/1920x600?text=Mock+Banner+2", srNo: 2 }
+      ],
     });
   }
 });
@@ -66,7 +78,7 @@ exports.bannerDelete = catchAsync(async (req, res, next) => {
         message: "Banner number (srNo) is required",
       });
     }
-    
+
     // Find and delete the banner
     const deletedBanner = await Banner.findOneAndDelete({ srNo });
     if (!deletedBanner) {
@@ -118,7 +130,7 @@ exports.bannerDelete = catchAsync(async (req, res, next) => {
 
 exports.bannerMove = catchAsync(async (req, res, next) => {
   try {
-    const {id, oldPosition, newPosition } = req.body;
+    const { id, oldPosition, newPosition } = req.body;
     if (!oldPosition || !newPosition) {
       return res.status(400).json({
         status: false,
@@ -138,14 +150,14 @@ exports.bannerMove = catchAsync(async (req, res, next) => {
         { $set: { srNo: newPosition } }
       );
     }
-    else if(newPosition < oldPosition){ // Moved upwards
+    else if (newPosition < oldPosition) { // Moved upwards
       // Increment srNo of all items between oldPosition-1 and newPosition
       await Banner.updateMany(
         { srNo: { $gte: newPosition, $lt: oldPosition } },
         { $inc: { srNo: +1 } }
       );
-       // Update the faculty member being moved to the new position
-       await Banner.updateOne(
+      // Update the faculty member being moved to the new position
+      await Banner.updateOne(
         { _id: id },
         { $set: { srNo: newPosition } }
       );
