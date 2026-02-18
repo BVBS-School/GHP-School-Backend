@@ -42,14 +42,6 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: '2000mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-upload = multer();
-app.use(upload.none());
-
-app.use("/user", require("./routes/userRoutes"));
-app.use("/about", require("./routes/aboutRoutes"));
-app.use("/career", require("./routes/careerRoutes"));
-app.use("/home", require("./routes/homeRoutes"));
-app.post("/home/banner/add", verifyToken, bannerAdd);
 app.post("/home/banner/upload", uploadImage.single('image'), (req, res) => {
   try {
     if (!req.file) {
@@ -57,6 +49,7 @@ app.post("/home/banner/upload", uploadImage.single('image'), (req, res) => {
     }
     const protocol = req.protocol;
     const host = req.get('host');
+    // Construct URL: protocol://host/images/uploads/filename
     const url = `${protocol}://${host}/images/uploads/${req.file.filename}`;
 
     res.status(200).json({
@@ -68,6 +61,15 @@ app.post("/home/banner/upload", uploadImage.single('image'), (req, res) => {
     res.status(500).json({ status: false, message: error.message });
   }
 });
+
+upload = multer();
+app.use(upload.none());
+
+app.use("/user", require("./routes/userRoutes"));
+app.use("/about", require("./routes/aboutRoutes"));
+app.use("/career", require("./routes/careerRoutes"));
+app.use("/home", require("./routes/homeRoutes"));
+app.post("/home/banner/add", verifyToken, bannerAdd);
 
 app.post("/result/add", verifyToken, resultAdd);
 app.post("/result/Edit", verifyToken, ResultEdit);
