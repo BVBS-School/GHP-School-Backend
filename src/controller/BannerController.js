@@ -7,9 +7,7 @@ const { default: axios } = require("axios");
 const logger = require("../utils/Logger");
 exports.bannerAdd = catchAsync(async (req, res, next) => {
   try {
-    console.log("req.body",req.body);
     const { photo, hash } = req.body;
-    // const photo = req.file.filename;
     if (!photo) {
       return res.status(400).json({
         status: false,
@@ -21,11 +19,11 @@ exports.bannerAdd = catchAsync(async (req, res, next) => {
     const newBanner = new Banner({
       srNo,
       photo,
-      imagehash:hash,
+      imagehash: hash,
     });
     await newBanner.save();
     res.status(201).json({
-      status: "success",
+      status: true,
       message: "Banner Added Successfully!",
       data: {
         Banner: newBanner,
@@ -41,17 +39,16 @@ exports.bannerAdd = catchAsync(async (req, res, next) => {
 
 exports.bannerGet = catchAsync(async (req, res, next) => {
   try {
-    const data = await Banner.find().sort({ srNo: 1 });
+    const banners = await Banner.find({}).sort({ srNo: 1 });
     res.status(200).json({
       status: true,
       message: "Data retrieved successfully!",
-      banners: data,
+      banners: banners,
     });
   } catch (err) {
-    console.error(err); // Log the error for debugging
     return res.status(500).json({
       status: false,
-      message: "An unknown error occurred. Please try again later.",
+      message: "An error occurred while retrieving banners.",
     });
   }
 });
@@ -66,7 +63,7 @@ exports.bannerDelete = catchAsync(async (req, res, next) => {
         message: "Banner number (srNo) is required",
       });
     }
-    
+
     // Find and delete the banner
     const deletedBanner = await Banner.findOneAndDelete({ srNo });
     if (!deletedBanner) {
@@ -118,7 +115,7 @@ exports.bannerDelete = catchAsync(async (req, res, next) => {
 
 exports.bannerMove = catchAsync(async (req, res, next) => {
   try {
-    const {id, oldPosition, newPosition } = req.body;
+    const { id, oldPosition, newPosition } = req.body;
     if (!oldPosition || !newPosition) {
       return res.status(400).json({
         status: false,
@@ -138,19 +135,18 @@ exports.bannerMove = catchAsync(async (req, res, next) => {
         { $set: { srNo: newPosition } }
       );
     }
-    else if(newPosition < oldPosition){ // Moved upwards
+    else if (newPosition < oldPosition) { // Moved upwards
       // Increment srNo of all items between oldPosition-1 and newPosition
       await Banner.updateMany(
         { srNo: { $gte: newPosition, $lt: oldPosition } },
         { $inc: { srNo: +1 } }
       );
-       // Update the faculty member being moved to the new position
-       await Banner.updateOne(
+      // Update the faculty member being moved to the new position
+      await Banner.updateOne(
         { _id: id },
         { $set: { srNo: newPosition } }
       );
     }
-
     return res.status(200).json({
       status: true,
       message: "Faculty position updated successfully",
