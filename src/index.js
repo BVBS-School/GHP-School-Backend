@@ -14,7 +14,7 @@ const { bannerAdd } = require("./controller/BannerController");
 const { resultAdd, ResultEdit } = require("./controller/ResultController");
 const { galleryAdd } = require("./controller/GalleryController");
 const uploadgallery = require("./utils/uploadGallery");
-const uploadImage = require("./utils/uploadImage");
+const uploadToCloudinary = require("./utils/uploadCloudinary");
 const { verifyToken } = require("./controller/AuthController");
 
 // const corsOptions = {
@@ -42,15 +42,13 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: '2000mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.post("/home/banner/upload", uploadImage.single('image'), (req, res) => {
+app.post("/home/banner/upload", uploadToCloudinary.single('image'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ status: false, message: "No file uploaded" });
     }
-    const protocol = req.protocol;
-    const host = req.get('host');
-    // Construct URL: protocol://host/images/uploads/filename
-    const url = `${protocol}://${host}/images/uploads/${req.file.filename}`;
+    // Cloudinary returns the URL in req.file.path
+    const url = req.file.path;
 
     res.status(200).json({
       status: true,
