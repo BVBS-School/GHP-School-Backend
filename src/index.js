@@ -3,7 +3,7 @@ require("./mongoconfig");
 dotenv.config();
 
 const express = require("express");
-const multer = require("multer"); 
+const multer = require("multer");
 const app = express();
 const cors = require("cors");
 const path = require("path");
@@ -14,6 +14,7 @@ const { bannerAdd } = require("./controller/BannerController");
 const { resultAdd, ResultEdit } = require("./controller/ResultController");
 const { galleryAdd } = require("./controller/GalleryController");
 const uploadgallery = require("./utils/uploadGallery");
+const uploadImage = require("./utils/uploadImage");
 const { verifyToken } = require("./controller/AuthController");
 
 // const corsOptions = {
@@ -42,13 +43,32 @@ app.use(express.json({ limit: '2000mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 upload = multer();
-app.use(upload.none()); 
+app.use(upload.none());
 
 app.use("/user", require("./routes/userRoutes"));
 app.use("/about", require("./routes/aboutRoutes"));
 app.use("/career", require("./routes/careerRoutes"));
 app.use("/home", require("./routes/homeRoutes"));
 app.post("/home/banner/add", verifyToken, bannerAdd);
+app.post("/home/banner/upload", uploadImage.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: false, message: "No file uploaded" });
+    }
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const url = `${protocol}://${host}/images/uploads/${req.file.filename}`;
+
+    res.status(200).json({
+      status: true,
+      message: "Image uploaded successfully",
+      url: url
+    });
+  } catch (error) {
+    res.status(500).json({ status: false, message: error.message });
+  }
+});
+
 app.post("/result/add", verifyToken, resultAdd);
 app.post("/result/Edit", verifyToken, ResultEdit);
 
@@ -62,7 +82,7 @@ app.use("/facilities", require("./routes/facilitiesRoutes"));
 app.use("/donation", require("./routes/donationRoutes"));
 app.use("/inquiry", require("./routes/InquiryRoutes"));
 app.use("/academics", require("./routes/academicsRoutes"));
-app.use("/admissionform", require("./routes/admissionFormRoutes.js"));
+app.use("/admissionform", require("./routes/admissionFormRoutes"));
 app.use("/payment", require("./routes/Paymentroute"));
 // Gallery Upload route
 app.post("/facilities/gallery/add", galleryAdd);
